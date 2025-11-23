@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stats Widget</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome İkonları -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.cdnfonts.com/css/arial" rel="stylesheet">
 
@@ -25,7 +27,8 @@
         /* --- WIDGET CSS --- */
         .widget-container {
             font-family: 'Arial', sans-serif;
-            background-color: rgba(0, 0, 0, 0.5); 
+            /* Tam siyah (Solid Black) */
+            background-color: #000000; 
             color: #ffffff;
             padding: 8px;
             width: 240px;
@@ -33,8 +36,9 @@
             flex-direction: row;
             align-items: center;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
-            backdrop-filter: blur(2px);
-            border-radius: 0px;
+            /* Arka plan solid olduğu için blur'a gerek kalmadı */
+            /* backdrop-filter: blur(2px); */ 
+            border-radius: 20px;
         }
 
         .level-icon-container {
@@ -77,16 +81,26 @@
         .arrow-icon {
             height: 13px; width: auto; margin-left: 4px; display: inline-block; vertical-align: middle;
         }
+
+        /* Gizli Ayarlar Butonu */
+        #settings-trigger {
+            transition: opacity 0.3s ease;
+        }
+        /* Sadece hover olunca görünsün */
+        #settings-trigger:hover {
+            opacity: 1 !important;
+        }
     </style>
 </head>
 <body>
 
+    <!-- Widget -->
     <div class="widget-container" id="widget">
         <div class="level-icon-container">
             <img id="w-level-img" class="level-icon" src="" alt="Lvl">
         </div>
         <div class="text-container">
-            <div class="rating-label">RATING:</div>
+            <div class="rating-label">RATING</div>
             <div class="elo-value" id="w-elo">ELO; ----</div>
             <div class="stats-row" id="w-stats-row">Win: -- Lose: -- (--%)</div>
             <div class="last-match" id="w-last-match">LAST MATCH:&nbsp;&nbsp;<span>--PTS</span></div>
@@ -94,19 +108,65 @@
         </div>
     </div>
 
+    <!-- GİZLİ AYAR BUTONU (Sağ Alt) -->
+    <div id="settings-trigger" class="fixed bottom-2 right-2 opacity-0 cursor-pointer p-2 bg-gray-800/80 text-white rounded-full shadow-lg z-40" onclick="openSettings()">
+        <i class="fa-solid fa-gear fa-lg"></i>
+    </div>
+
+    <!-- AYARLAR MODALI (Gizli) -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50">
+        <div class="bg-[#18181b] p-6 rounded-lg border border-[#3f3f46] text-white w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-orange-500">Başlangıç Ayarı</h2>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm mb-1 text-gray-300 font-bold">Son Maç Puan Farkı</label>
+                <p class="text-xs text-gray-500 mb-2">Henüz yeni maç oynanmadıysa görünecek değer.</p>
+                <div class="flex gap-2">
+                    <input type="number" id="input-diff" class="w-full bg-[#27272a] border border-[#52525b] rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" placeholder="Örn: 25">
+                </div>
+            </div>
+
+            <button onclick="applySettings()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded transition shadow-lg">
+                Uygula ve Linki Yenile
+            </button>
+        </div>
+    </div>
+
     <script>
-        // ==========================================
-        //           YÖNETİCİ AYARLARI
-        // ==========================================
-        
         const API_KEY = "5dbe323f-3fb4-4bd6-8b9f-b5688d63ebee"; 
-        const NICKNAME = "oz3R"; 
+        
+        // URL Parametre Yönetimi
+        const urlParams = new URLSearchParams(window.location.search);
+        const NICKNAME = urlParams.get('name') || "oz3R";
+        const INITIAL_DIFF_PARAM = urlParams.get('diff'); 
 
-        // İLK AÇILIŞTA GÖRÜNECEK DEĞER (Henüz yeni maç bitmediyse bu görünür)
-        // + veya - işareti koyarak yazın. (Örn: "+23" veya "-15")
-        const MANUEL_BASLANGIC_PUANI = "-23"; 
+        // --- UI FONKSİYONLARI ---
+        function openSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            // Mevcut değeri inputa koy
+            if(INITIAL_DIFF_PARAM) document.getElementById('input-diff').value = INITIAL_DIFF_PARAM;
+        }
 
-        // ==========================================
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function applySettings() {
+            const val = document.getElementById('input-diff').value;
+            const url = new URL(window.location);
+            
+            if (val) {
+                url.searchParams.set('diff', val);
+            } else {
+                url.searchParams.delete('diff');
+            }
+            
+            // Sayfayı yeni parametreyle yenile
+            window.location.href = url.toString();
+        }
 
         const els = {
             wLevelImg: document.getElementById('w-level-img'),
@@ -117,8 +177,8 @@
         };
 
         // Canlı Takip Değişkenleri
-        let cachedElo = null;        // Bir önceki ELO'yu hafızada tutar
-        let activeDiffDisplay = null; // Ekranda gösterilecek HTML'i saklar
+        let cachedElo = null;        
+        let activeDiffDisplay = null; 
 
         async function fetchFaceitData() {
             try {
@@ -143,31 +203,35 @@
                     // --- B. ELO YAZISI ---
                     if (els.wElo.innerText !== `ELO; ${currentElo}`) els.wElo.innerText = `ELO; ${currentElo}`;
 
-                    // --- C. SON MAÇ PUAN HESAPLAMA (DEĞİŞİM TAKİBİ) ---
+                    // --- C. SON MAÇ PUAN HESAPLAMA ---
                     
-                    // İlk çalıştırma ise: Şu anki ELO'yu hafızaya al, manuel puanı göster
+                    // 1. Senaryo: İlk açılış (Henüz değişim yok)
                     if (cachedElo === null) {
                         cachedElo = currentElo;
                         
-                        // Manuel puanı işle (+/- ve renk)
-                        const isManualPositive = MANUEL_BASLANGIC_PUANI.includes("+");
-                        const manualColor = isManualPositive ? "positive" : "negative";
-                        const manualArrow = isManualPositive ? "images/greenArrow.png" : "images/redArrow.png";
+                        // URL'den gelen değeri işle (Varsayılan 0)
+                        let startVal = parseInt(INITIAL_DIFF_PARAM) || 0;
                         
-                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${manualColor}">${MANUEL_BASLANGIC_PUANI}PTS</span> <img src="${manualArrow}" class="arrow-icon" alt="Arrow">`;
+                        const isPositive = startVal >= 0;
+                        const sign = (startVal > 0) ? "+" : ""; 
+                        const displayVal = sign + startVal;
+                        
+                        const colorClass = isPositive ? "positive" : "negative";
+                        const arrowImg = isPositive ? "images/greenArrow.png" : "images/redArrow.png";
+                        
+                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${displayVal}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
                     }
 
-                    // Eğer ELO değiştiyse (Yeni maç bitti!)
+                    // 2. Senaryo: ELO değişti (Yeni maç bitti!)
                     if (currentElo !== cachedElo) {
-                        const diff = currentElo - cachedElo; // Örn: 1190 - 1200 = -10
-                        const sign = diff > 0 ? "+" : "";    // Pozitifse artı koy, negatifse zaten eksi var
+                        const diff = currentElo - cachedElo; 
+                        const sign = diff > 0 ? "+" : "";    
                         const colorClass = diff > 0 ? "positive" : "negative";
                         const arrowImg = diff > 0 ? "images/greenArrow.png" : "images/redArrow.png";
 
-                        // Yeni görünümü oluştur ve kaydet
                         activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${sign}${diff}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
                         
-                        // Hafızayı güncelle (Bir sonraki değişim için yeni referans bu olur)
+                        // Hafızayı güncelle
                         cachedElo = currentElo;
                     }
 
@@ -177,7 +241,6 @@
                     }
 
                     // --- D. İSTATİSTİKLER (Son 20 Maç) ---
-                    // Bu kısmı sadece bilgi amaçlı çekiyoruz, puan hesabını yukarıda yaptık
                     const historyRes = await fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=20`, {
                         headers: { 'Authorization': `Bearer ${API_KEY}` }
                     });
