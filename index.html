@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.cdnfonts.com/css/arial" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #000;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* --- WIDGET CSS --- */
+        .widget-container {
+            font-family: 'Arial', sans-serif;
+            background-color: rgba(0, 0, 0, 0.5); 
+            color: #ffffff;
+            padding: 8px;
+            width: 240px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            backdrop-filter: blur(2px);
+            border-radius: 0px;
+        }
+
+        .level-icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+
+        .level-icon {
+            max-width: 45px;
+            max-height: 45px;
+            object-fit: contain;
+            color: white; 
+            font-size: 10px;
+        }
+
+        .text-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .rating-label { font-weight: 900; font-size: 14px; margin-bottom: 1px; line-height: 1.2; opacity: 0.9; }
+        .elo-value { font-weight: 900; font-size: 16px; margin-bottom: 2px; line-height: 1.2; }
+        .stats-row { font-size: 13px; margin-bottom: 2px; font-weight: 800; line-height: 1.2; }
+        .last-match { font-size: 13px; font-weight: 800; margin-bottom: 2px; line-height: 1.2; display: flex; align-items: center; }
+        
+        .update-time {
+            font-size: 11px; opacity: 0.9; font-weight: 700; line-height: 1.2; margin-top: 2px;
+            font-feature-settings: "tnum"; font-variant-numeric: tabular-nums;
+        }
+
+        .positive { color: #4CAF50; font-weight: 900; }
+        .negative { color: #F44336; font-weight: 900; }
+        
+        .arrow-icon {
+            height: 13px; width: auto; margin-left: 4px; display: inline-block; vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-container" id="widget">
+        <div class="level-icon-container">
+            <img id="w-level-img" class="level-icon" src="" alt="Lvl">
+        </div>
+        <div class="text-container">
+            <div class="rating-label">RATING:</div>
+            <div class="elo-value" id="w-elo">ELO; ----</div>
+            <div class="stats-row" id="w-stats-row">Win: -- Lose: -- (--%)</div>
+            <div class="last-match" id="w-last-match">LAST MATCH:&nbsp;&nbsp;<span>--PTS</span></div>
+            <div class="update-time" id="w-update-time">Updated: --:--:--</div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        //           YÖNETİCİ AYARLARI
+        // ==========================================
+        
+        const API_KEY = "5dbe323f-3fb4-4bd6-8b9f-b5688d63ebee"; 
+        const NICKNAME = "oz3R"; 
+
+        // İLK AÇILIŞTA GÖRÜNECEK DEĞER (Henüz yeni maç bitmediyse bu görünür)
+        // + veya - işareti koyarak yazın. (Örn: "+23" veya "-15")
+        const MANUEL_BASLANGIC_PUANI = "-23"; 
+
+        // ==========================================
+
+        const els = {
+            wLevelImg: document.getElementById('w-level-img'),
+            wElo: document.getElementById('w-elo'),
+            wStatsRow: document.getElementById('w-stats-row'),
+            wLastMatch: document.getElementById('w-last-match'),
+            wUpdateTime: document.getElementById('w-update-time')
+        };
+
+        // Canlı Takip Değişkenleri
+        let cachedElo = null;        // Bir önceki ELO'yu hafızada tutar
+        let activeDiffDisplay = null; // Ekranda gösterilecek HTML'i saklar
+
+        async function fetchFaceitData() {
+            try {
+                // 1. API'den Veri Çek
+                const res = await fetch(`https://open.faceit.com/data/v4/players?nickname=${NICKNAME}&game=cs2`, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}` }
+                });
+                if (!res.ok) throw new Error("Player not found");
+                const data = await res.json();
+                
+                if (data.games && data.games.cs2) {
+                    const cs2 = data.games.cs2;
+                    const playerId = data.player_id;
+                    const level = cs2.skill_level;
+                    const currentElo = cs2.faceit_elo;
+                    
+                    // --- A. LEVEL RESMİ ---
+                    const formattedLevel = level < 10 ? '0' + level : level;
+                    const newImgSrc = `images/${formattedLevel}_v2.svg`;
+                    if (!els.wLevelImg.src.includes(newImgSrc)) els.wLevelImg.src = newImgSrc;
+                    
+                    // --- B. ELO YAZISI ---
+                    if (els.wElo.innerText !== `ELO; ${currentElo}`) els.wElo.innerText = `ELO; ${currentElo}`;
+
+                    // --- C. SON MAÇ PUAN HESAPLAMA (DEĞİŞİM TAKİBİ) ---
+                    
+                    // İlk çalıştırma ise: Şu anki ELO'yu hafızaya al, manuel puanı göster
+                    if (cachedElo === null) {
+                        cachedElo = currentElo;
+                        
+                        // Manuel puanı işle (+/- ve renk)
+                        const isManualPositive = MANUEL_BASLANGIC_PUANI.includes("+");
+                        const manualColor = isManualPositive ? "positive" : "negative";
+                        const manualArrow = isManualPositive ? "images/greenArrow.png" : "images/redArrow.png";
+                        
+                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${manualColor}">${MANUEL_BASLANGIC_PUANI}PTS</span> <img src="${manualArrow}" class="arrow-icon" alt="Arrow">`;
+                    }
+
+                    // Eğer ELO değiştiyse (Yeni maç bitti!)
+                    if (currentElo !== cachedElo) {
+                        const diff = currentElo - cachedElo; // Örn: 1190 - 1200 = -10
+                        const sign = diff > 0 ? "+" : "";    // Pozitifse artı koy, negatifse zaten eksi var
+                        const colorClass = diff > 0 ? "positive" : "negative";
+                        const arrowImg = diff > 0 ? "images/greenArrow.png" : "images/redArrow.png";
+
+                        // Yeni görünümü oluştur ve kaydet
+                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${sign}${diff}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
+                        
+                        // Hafızayı güncelle (Bir sonraki değişim için yeni referans bu olur)
+                        cachedElo = currentElo;
+                    }
+
+                    // Ekrana Bas
+                    if (els.wLastMatch.innerHTML !== activeDiffDisplay) {
+                        els.wLastMatch.innerHTML = activeDiffDisplay;
+                    }
+
+                    // --- D. İSTATİSTİKLER (Son 20 Maç) ---
+                    // Bu kısmı sadece bilgi amaçlı çekiyoruz, puan hesabını yukarıda yaptık
+                    const historyRes = await fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=20`, {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    });
+                    const historyData = await historyRes.json();
+                    if (historyData.items && historyData.items.length > 0) {
+                        let wins = 0;
+                        let losses = 0;
+                        historyData.items.forEach(match => {
+                            if (match.stats.Result === '1') wins++; else losses++;
+                        });
+                        const total = wins + losses;
+                        const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+                        const newStatsText = `Win: ${wins} Lose: ${losses} (${winRate}%)`;
+                        if (els.wStatsRow.innerText !== newStatsText) els.wStatsRow.innerText = newStatsText;
+                    }
+
+                    // --- E. ZAMAN ---
+                    const now = new Date();
+                    const h = now.getHours().toString().padStart(2, '0');
+                    const m = now.getMinutes().toString().padStart(2, '0');
+                    const s = now.getSeconds().toString().padStart(2, '0');
+                    els.wUpdateTime.innerText = `Updated: ${h}:${m}:${s}`;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        fetchFaceitData();
+        setInterval(fetchFaceitData, 5000); 
+    </script>
+</body>
+</html>
