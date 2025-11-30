@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stats Widget</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome İkonları -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.cdnfonts.com/css/arial" rel="stylesheet">
@@ -13,7 +12,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #ffffff;
+            background-color: #ffffff; /* OBS'de şeffaf olacak */
             color: #000;
             margin: 0;
             padding: 0;
@@ -27,18 +26,30 @@
         /* --- WIDGET CSS --- */
         .widget-container {
             font-family: 'Arial', sans-serif;
-            /* Tam siyah (Solid Black) */
-            background-color: #000000; 
+            background-color: transparent; /* Arka plan yok */
+            box-shadow: none; /* Kutu gölgesi yok */
             color: #ffffff;
             padding: 8px;
             width: 240px;
             display: flex;
             flex-direction: row;
             align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
-            /* Arka plan solid olduğu için blur'a gerek kalmadı */
-            /* backdrop-filter: blur(2px); */ 
-            border-radius: 20px;
+        }
+
+        /* --- KRİTİK AYAR: KESKİN SİYAH DIŞ HAT --- */
+        .text-container div, .text-container span {
+            /* Yazı Rengi */
+            color: #ffffff; 
+            
+            /* Dış Hat Ayarı */
+            -webkit-text-stroke-width: 3.5px; /* Çerçevenin kalınlığı */
+            -webkit-text-stroke-color: #000000; /* Çerçevenin rengi (Tam Siyah) */
+            
+            /* ÖNEMLİ: Bu ayar dış hattın yazının üzerine binmesini engeller, arkasına atar */
+            paint-order: stroke fill; 
+            
+            /* Hafif bir 'sert' gölge ile derinlik katalım (Bulanıklık yok) */
+            filter: drop-shadow(2px 2px 0px rgba(0,0,0,1));
         }
 
         .level-icon-container {
@@ -50,12 +61,16 @@
             margin-right: 10px;
         }
 
+        /* Resimlere de sert dış hat efekti */
         .level-icon {
             max-width: 45px;
             max-height: 45px;
             object-fit: contain;
-            color: white; 
-            font-size: 10px;
+            /* Resim etrafına sert kontür */
+            filter: drop-shadow(2px 0 0 #000) 
+                    drop-shadow(-2px 0 0 #000) 
+                    drop-shadow(0 2px 0 #000) 
+                    drop-shadow(0 -2px 0 #000);
         }
 
         .text-container {
@@ -65,36 +80,34 @@
             justify-content: center;
         }
 
-        .rating-label { font-weight: 900; font-size: 14px; margin-bottom: 1px; line-height: 1.2; opacity: 0.9; }
-        .elo-value { font-weight: 900; font-size: 16px; margin-bottom: 2px; line-height: 1.2; }
-        .stats-row { font-size: 13px; margin-bottom: 2px; font-weight: 800; line-height: 1.2; }
-        .last-match { font-size: 13px; font-weight: 800; margin-bottom: 2px; line-height: 1.2; display: flex; align-items: center; }
+        /* Yazı tiplerini biraz daha kalınlaştırdık ki stroke içinde kaybolmasın */
+        .rating-label { font-weight: 900; font-size: 14px; margin-bottom: -2px; line-height: 1.1; letter-spacing: 0.5px; }
+        .elo-value { font-weight: 900; font-size: 17px; margin-bottom: 0px; line-height: 1.2; letter-spacing: 0.5px; }
+        .stats-row { font-size: 14px; margin-bottom: 0px; font-weight: 900; line-height: 1.2; }
+        .last-match { font-size: 14px; font-weight: 900; margin-bottom: 0px; line-height: 1.2; display: flex; align-items: center; }
         
         .update-time {
-            font-size: 11px; opacity: 0.9; font-weight: 700; line-height: 1.2; margin-top: 2px;
+            font-size: 11px; opacity: 1; font-weight: 800; line-height: 1.2; margin-top: 2px;
             font-feature-settings: "tnum"; font-variant-numeric: tabular-nums;
+            /* Saat biraz daha ince dış hatta sahip olabilir */
+            -webkit-text-stroke-width: 2.5px !important; 
         }
 
         .positive { color: #4CAF50; font-weight: 900; }
         .negative { color: #F44336; font-weight: 900; }
         
         .arrow-icon {
-            height: 13px; width: auto; margin-left: 4px; display: inline-block; vertical-align: middle;
+            height: 14px; width: auto; margin-left: 4px; display: inline-block; vertical-align: middle;
+            filter: drop-shadow(1px 1px 0px #000) drop-shadow(-1px -1px 0px #000);
         }
 
         /* Gizli Ayarlar Butonu */
-        #settings-trigger {
-            transition: opacity 0.3s ease;
-        }
-        /* Sadece hover olunca görünsün */
-        #settings-trigger:hover {
-            opacity: 1 !important;
-        }
+        #settings-trigger { transition: opacity 0.3s ease; }
+        #settings-trigger:hover { opacity: 1 !important; }
     </style>
 </head>
 <body>
 
-    <!-- Widget -->
     <div class="widget-container" id="widget">
         <div class="level-icon-container">
             <img id="w-level-img" class="level-icon" src="" alt="Lvl">
@@ -108,12 +121,10 @@
         </div>
     </div>
 
-    <!-- GİZLİ AYAR BUTONU (Sağ Alt) -->
     <div id="settings-trigger" class="fixed bottom-2 right-2 opacity-0 cursor-pointer p-2 bg-gray-800/80 text-white rounded-full shadow-lg z-40" onclick="openSettings()">
         <i class="fa-solid fa-gear fa-lg"></i>
     </div>
 
-    <!-- AYARLAR MODALI (Gizli) -->
     <div id="settings-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50">
         <div class="bg-[#18181b] p-6 rounded-lg border border-[#3f3f46] text-white w-80 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
@@ -123,7 +134,6 @@
             
             <div class="mb-4">
                 <label class="block text-sm mb-1 text-gray-300 font-bold">Son Maç Puan Farkı</label>
-                <p class="text-xs text-gray-500 mb-2">Henüz yeni maç oynanmadıysa görünecek değer.</p>
                 <div class="flex gap-2">
                     <input type="number" id="input-diff" class="w-full bg-[#27272a] border border-[#52525b] rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" placeholder="Örn: 25">
                 </div>
@@ -137,16 +147,12 @@
 
     <script>
         const API_KEY = "5dbe323f-3fb4-4bd6-8b9f-b5688d63ebee"; 
-        
-        // URL Parametre Yönetimi
         const urlParams = new URLSearchParams(window.location.search);
         const NICKNAME = urlParams.get('name') || "oz3R";
         const INITIAL_DIFF_PARAM = urlParams.get('diff'); 
 
-        // --- UI FONKSİYONLARI ---
         function openSettings() {
             document.getElementById('settings-modal').classList.remove('hidden');
-            // Mevcut değeri inputa koy
             if(INITIAL_DIFF_PARAM) document.getElementById('input-diff').value = INITIAL_DIFF_PARAM;
         }
 
@@ -157,14 +163,8 @@
         function applySettings() {
             const val = document.getElementById('input-diff').value;
             const url = new URL(window.location);
-            
-            if (val) {
-                url.searchParams.set('diff', val);
-            } else {
-                url.searchParams.delete('diff');
-            }
-            
-            // Sayfayı yeni parametreyle yenile
+            if (val) url.searchParams.set('diff', val);
+            else url.searchParams.delete('diff');
             window.location.href = url.toString();
         }
 
@@ -176,13 +176,11 @@
             wUpdateTime: document.getElementById('w-update-time')
         };
 
-        // Canlı Takip Değişkenleri
         let cachedElo = null;        
         let activeDiffDisplay = null; 
 
         async function fetchFaceitData() {
             try {
-                // 1. API'den Veri Çek
                 const res = await fetch(`https://open.faceit.com/data/v4/players?nickname=${NICKNAME}&game=cs2`, {
                     headers: { 'Authorization': `Bearer ${API_KEY}` }
                 });
@@ -195,52 +193,36 @@
                     const level = cs2.skill_level;
                     const currentElo = cs2.faceit_elo;
                     
-                    // --- A. LEVEL RESMİ ---
                     const formattedLevel = level < 10 ? '0' + level : level;
                     const newImgSrc = `images/${formattedLevel}_v2.svg`;
                     if (!els.wLevelImg.src.includes(newImgSrc)) els.wLevelImg.src = newImgSrc;
                     
-                    // --- B. ELO YAZISI ---
                     if (els.wElo.innerText !== `ELO; ${currentElo}`) els.wElo.innerText = `ELO; ${currentElo}`;
 
-                    // --- C. SON MAÇ PUAN HESAPLAMA ---
-                    
-                    // 1. Senaryo: İlk açılış (Henüz değişim yok)
                     if (cachedElo === null) {
                         cachedElo = currentElo;
-                        
-                        // URL'den gelen değeri işle (Varsayılan 0)
                         let startVal = parseInt(INITIAL_DIFF_PARAM) || 0;
-                        
                         const isPositive = startVal >= 0;
                         const sign = (startVal > 0) ? "+" : ""; 
                         const displayVal = sign + startVal;
-                        
                         const colorClass = isPositive ? "positive" : "negative";
                         const arrowImg = isPositive ? "images/greenArrow.png" : "images/redArrow.png";
-                        
                         activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${displayVal}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
                     }
 
-                    // 2. Senaryo: ELO değişti (Yeni maç bitti!)
                     if (currentElo !== cachedElo) {
                         const diff = currentElo - cachedElo; 
                         const sign = diff > 0 ? "+" : "";    
                         const colorClass = diff > 0 ? "positive" : "negative";
                         const arrowImg = diff > 0 ? "images/greenArrow.png" : "images/redArrow.png";
-
                         activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${sign}${diff}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
-                        
-                        // Hafızayı güncelle
                         cachedElo = currentElo;
                     }
 
-                    // Ekrana Bas
                     if (els.wLastMatch.innerHTML !== activeDiffDisplay) {
                         els.wLastMatch.innerHTML = activeDiffDisplay;
                     }
 
-                    // --- D. İSTATİSTİKLER (Son 20 Maç) ---
                     const historyRes = await fetch(`https://open.faceit.com/data/v4/players/${playerId}/games/cs2/stats?limit=20`, {
                         headers: { 'Authorization': `Bearer ${API_KEY}` }
                     });
@@ -257,7 +239,6 @@
                         if (els.wStatsRow.innerText !== newStatsText) els.wStatsRow.innerText = newStatsText;
                     }
 
-                    // --- E. ZAMAN ---
                     const now = new Date();
                     const h = now.getHours().toString().padStart(2, '0');
                     const m = now.getMinutes().toString().padStart(2, '0');
