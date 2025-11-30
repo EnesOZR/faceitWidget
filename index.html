@@ -13,7 +13,6 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #ffffff; /* OBS'de şeffaf olacak */
-            color: #000;
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -26,47 +25,46 @@
         /* --- WIDGET CSS --- */
         .widget-container {
             font-family: 'Arial', sans-serif;
-            background-color: transparent; /* Arka plan yok */
-            box-shadow: none; /* Kutu gölgesi yok */
-            color: #ffffff;
-            padding: 8px;
-            width: 240px;
+            background-color: transparent;
+            
+            /* DÜZELTME 1: Genişlik artık sabit değil, yazıya göre uzar */
+            width: auto; 
+            min-width: 240px; /* Çok küçülmesin */
+            
+            padding: 10px; /* Kenarlardan biraz boşluk */
             display: flex;
             flex-direction: row;
             align-items: center;
         }
 
-        /* --- KRİTİK AYAR: KESKİN SİYAH DIŞ HAT --- */
+        /* --- METİN AYARLARI --- */
         .text-container div, .text-container span {
-            /* Yazı Rengi */
-            color: #ffffff; 
-            
-            /* Dış Hat Ayarı */
-            -webkit-text-stroke-width: 3.5px; /* Çerçevenin kalınlığı */
-            -webkit-text-stroke-color: #000000; /* Çerçevenin rengi (Tam Siyah) */
-            
-            /* ÖNEMLİ: Bu ayar dış hattın yazının üzerine binmesini engeller, arkasına atar */
-            paint-order: stroke fill; 
-            
-            /* Hafif bir 'sert' gölge ile derinlik katalım (Bulanıklık yok) */
+            color: #ffffff;
+            /* Dış Hat */
+            -webkit-text-stroke-width: 3.5px;
+            -webkit-text-stroke-color: #000000;
+            paint-order: stroke fill;
+            /* Gölge (Sert) */
             filter: drop-shadow(2px 2px 0px rgba(0,0,0,1));
+            
+            /* DÜZELTME 2: Asla alt satıra geçme */
+            white-space: nowrap;
         }
 
         .level-icon-container {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 50px;
+            width: 50px; /* İkon alanı sabit */
             height: 50px;
-            margin-right: 10px;
+            margin-right: 12px; /* Yazı ile ikon arası mesafe */
+            flex-shrink: 0; /* İkonun sıkışmasını engelle */
         }
 
-        /* Resimlere de sert dış hat efekti */
         .level-icon {
-            max-width: 45px;
-            max-height: 45px;
+            max-width: 50px;
+            max-height: 50px;
             object-fit: contain;
-            /* Resim etrafına sert kontür */
             filter: drop-shadow(2px 0 0 #000) 
                     drop-shadow(-2px 0 0 #000) 
                     drop-shadow(0 2px 0 #000) 
@@ -78,18 +76,29 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            /* Yazıların sola dayalı olduğundan emin olalım */
+            align-items: flex-start; 
         }
 
-        /* Yazı tiplerini biraz daha kalınlaştırdık ki stroke içinde kaybolmasın */
+        /* Satır aralıkları ve boyutlar */
         .rating-label { font-weight: 900; font-size: 14px; margin-bottom: -2px; line-height: 1.1; letter-spacing: 0.5px; }
-        .elo-value { font-weight: 900; font-size: 17px; margin-bottom: 0px; line-height: 1.2; letter-spacing: 0.5px; }
+        .elo-value { font-weight: 900; font-size: 18px; margin-bottom: 0px; line-height: 1.2; letter-spacing: 0.5px; }
         .stats-row { font-size: 14px; margin-bottom: 0px; font-weight: 900; line-height: 1.2; }
-        .last-match { font-size: 14px; font-weight: 900; margin-bottom: 0px; line-height: 1.2; display: flex; align-items: center; }
+        
+        /* DÜZELTME 3: Flex yapısını düzelttik */
+        .last-match { 
+            font-size: 14px; 
+            font-weight: 900; 
+            margin-bottom: 0px; 
+            line-height: 1.2; 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; /* LAST MATCH yazısı ile Puan arasındaki boşluk */
+        }
         
         .update-time {
-            font-size: 11px; opacity: 1; font-weight: 800; line-height: 1.2; margin-top: 2px;
+            font-size: 12px; font-weight: 800; line-height: 1.2; margin-top: 2px;
             font-feature-settings: "tnum"; font-variant-numeric: tabular-nums;
-            /* Saat biraz daha ince dış hatta sahip olabilir */
             -webkit-text-stroke-width: 2.5px !important; 
         }
 
@@ -97,7 +106,7 @@
         .negative { color: #F44336; font-weight: 900; }
         
         .arrow-icon {
-            height: 14px; width: auto; margin-left: 4px; display: inline-block; vertical-align: middle;
+            height: 14px; width: auto; display: inline-block; vertical-align: middle;
             filter: drop-shadow(1px 1px 0px #000) drop-shadow(-1px -1px 0px #000);
         }
 
@@ -116,7 +125,7 @@
             <div class="rating-label">RATING</div>
             <div class="elo-value" id="w-elo">ELO; ----</div>
             <div class="stats-row" id="w-stats-row">Win: -- Lose: -- (--%)</div>
-            <div class="last-match" id="w-last-match">LAST MATCH:&nbsp;&nbsp;<span>--PTS</span></div>
+            <div class="last-match" id="w-last-match">LAST MATCH: <span>--PTS</span></div>
             <div class="update-time" id="w-update-time">Updated: --:--:--</div>
         </div>
     </div>
@@ -207,7 +216,8 @@
                         const displayVal = sign + startVal;
                         const colorClass = isPositive ? "positive" : "negative";
                         const arrowImg = isPositive ? "images/greenArrow.png" : "images/redArrow.png";
-                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${displayVal}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
+                        // &nbsp; yerine sadece boşluk bıraktık, CSS gap ile halledecek
+                        activeDiffDisplay = `LAST MATCH: <span class="${colorClass}">${displayVal}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
                     }
 
                     if (currentElo !== cachedElo) {
@@ -215,7 +225,7 @@
                         const sign = diff > 0 ? "+" : "";    
                         const colorClass = diff > 0 ? "positive" : "negative";
                         const arrowImg = diff > 0 ? "images/greenArrow.png" : "images/redArrow.png";
-                        activeDiffDisplay = `LAST MATCH:&nbsp;&nbsp;<span class="${colorClass}">${sign}${diff}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
+                        activeDiffDisplay = `LAST MATCH: <span class="${colorClass}">${sign}${diff}PTS</span> <img src="${arrowImg}" class="arrow-icon" alt="Arrow">`;
                         cachedElo = currentElo;
                     }
 
